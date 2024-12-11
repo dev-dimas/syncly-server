@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String             @id @default(cuid())
+  name             String
+  email            String             @unique
+  password         String
+  avatar           String?
+  resetPassword    ResetPassword[]
+  projects         Project[]
+  tasks            TaskAssignee[]
+  favoriteProjects FavoriteProject[]
+  archiveProjects  ArchiveProject[]
+  ProjectMember    ProjectMember[]
+  NotificationUser NotificationUser[]
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  @@index([id, email])
+}
+
+model ResetPassword {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([token])
+}
+
+model Project {
+  id              String            @id @default(cuid())
+  name            String
+  description     String?
+  image           String?
+  owner           User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId         String            @map("owner_id")
+  tasks           Task[]
+  members         ProjectMember[]
+  FavoriteProject FavoriteProject[]
+  ArchiveProject  ArchiveProject[]
+  TaskAssignee    TaskAssignee[]
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@index([id, ownerId])
+}
+
+model Task {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  dueDate     DateTime       @map("due_date")
+  status      TaskStatus     @default(ACTIVE)
+  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String         @map("project_id")
+  assignedTo  TaskAssignee[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([id, projectId])
+}
+
+enum TaskStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+model FavoriteProject {
+  id        String  @id @default(cuid())
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String  @map("user_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String  @map("project_id")
+
+  @@unique([userId, projectId])
+  @@index([userId])
+}
+
+model ArchiveProject {
+  id        String  @id @default(cuid())
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String  @map("user_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String  @map("project_id")
+
+  @@unique([userId, projectId])
+  @@index([userId])
+}
+
+model Notification {
+  id          String             @id @default(cuid())
+  title       String
+  description String
+  users       NotificationUser[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([id])
+}
+
+model ProjectMember {
+  id        String  @id @default(cuid())
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String  @map("user_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String  @map("project_id")
+
+  @@unique([userId, projectId])
+  @@index([userId, projectId])
+}
+
+model TaskAssignee {
+  id        String  @id @default(cuid())
+  task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId    String  @map("task_id")
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String  @map("user_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String  @map("project_id")
+
+  @@unique([taskId, userId])
+  @@unique([taskId, userId, projectId])
+  @@index([taskId, userId, projectId])
+}
+
+model NotificationUser {
+  id             String       @id @default(cuid())
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  notificationId String       @map("notification_id")
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String       @map("user_id")
+  seen           Boolean      @default(false)
+
+  @@unique([notificationId, userId])
+  @@index([notificationId, userId, seen])
+}
