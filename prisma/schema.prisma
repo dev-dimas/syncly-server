@@ -40,10 +40,10 @@ model ResetPassword {
 model Project {
   id              String            @id @default(cuid())
   name            String
-  description     String?
   image           String?
   owner           User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId         String            @map("owner_id")
+  isTeamProject   Boolean           @default(false) @map("is_team_project")
   tasks           Task[]
   members         ProjectMember[]
   FavoriteProject FavoriteProject[]
@@ -115,6 +115,7 @@ model ProjectMember {
   userId    String  @map("user_id")
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId String  @map("project_id")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@unique([userId, projectId])
   @@index([userId, projectId])

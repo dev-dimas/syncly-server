@@ -8,19 +8,8 @@ import prismaClient from '../config/prisma';
 import type { ValidatedRequest } from '../types/types';
 import { createAccessToken } from '../utils/generate-tokens.util';
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-
 /**
- * This function handles the signup process for new users. It expects a request object with the following properties:
- *
- * @param {TypedRequest<UserSignUpCredentials>} req - The request object that includes user's username, email, and password.
- * @param {Response} res - The response object that will be used to send the HTTP response.
- *
- * @returns {Response} Returns an HTTP response that includes one of the following:
- *   - A 400 BAD REQUEST status code and an error message if the request body is missing any required parameters.
- *   - A 409 CONFLICT status code if the user email already exists in the database.
- *   - A 201 CREATED status code and a success message if the new user is successfully created and a verification email is sent.
- *   - A 500 INTERNAL SERVER ERROR status code if there is an error in the server.
+ * This function handles the signup process for new users.
  */
 export const handleSignUp = async (
   req: ValidatedRequest<SignUpDTO>,
@@ -65,16 +54,7 @@ export const handleSignUp = async (
 };
 
 /**
- * This function handles the login process for users. It expects a request object with the following properties:
- *
- * @param {TypedRequest<UserLoginCredentials>} req - The request object that includes user's email and password.
- * @param {Response} res - The response object that will be used to send the HTTP response.
- *
- * @returns {Response} Returns an HTTP response that includes one of the following:
- *   - A 400 BAD REQUEST status code and an error message if the request body is missing any required parameters.
- *   - A 401 UNAUTHORIZED status code if the user email does not exist in the database or the email is not verified or the password is incorrect.
- *   - A 200 OK status code and an access token if the login is successful and a new refresh token is stored in the database and a new refresh token cookie is set.
- *   - A 500 INTERNAL SERVER ERROR status code if there is an error in the server.
+ * This function handles the login process for users.
  */
 export const handleLogin = async (
   req: ValidatedRequest<LoginDTO>,

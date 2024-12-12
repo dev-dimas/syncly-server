@@ -11,14 +11,11 @@ export const errorHandler = (
   logger.error((err as Error).message);
 
   if (err instanceof SyntaxError && 'body' in err) {
-    return res.status(400).send({ status: 400, message: 'Bad Request' });
+    return res.status(400).send({ message: 'Bad Request' });
   }
 
   if (err instanceof HttpException) {
-    return res.status(err.status).json({
-      status: err.status,
-      message: err.message
-    });
+    return res.status(err.status).json({ message: err.message });
   }
 
   if (err instanceof SyntaxError && 'body' in err) {

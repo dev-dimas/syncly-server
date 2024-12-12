@@ -48,3 +48,8 @@ export type Sanitized<T> = T extends (...args: unknown[]) => unknown
 export type SanitizeOptions = IFilterXSSOptions & {
   whiteList?: IFilterXSSOptions['whiteList'];
 };
+
+export interface SSEClient {
+  id: string;
+  response: Response;
+}

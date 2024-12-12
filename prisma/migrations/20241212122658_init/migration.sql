@@ -29,9 +29,9 @@ CREATE TABLE "ResetPassword" (
 CREATE TABLE "Project" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "description" TEXT,
     "image" TEXT,
     "owner_id" TEXT NOT NULL,
+    "is_team_project" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -86,6 +86,7 @@ CREATE TABLE "ProjectMember" (
     "id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ProjectMember_pkey" PRIMARY KEY ("id")
 );

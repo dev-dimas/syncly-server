@@ -1,11 +1,13 @@
 import * as argon2 from 'argon2';
 import { randomUUID } from 'crypto';
 import dayjs from 'dayjs';
-import type { Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import httpStatus from 'http-status';
-import {
-  type ForgotPasswordDTO,
-  type ResetPasswordDTO
+import { HttpException } from 'src/utils/http-exception.util';
+import type {
+  ChangePasswordDTO,
+  ForgotPasswordDTO,
+  ResetPasswordDTO
 } from 'src/validations/password.validation';
 import prismaClient from '../config/prisma';
 import type { ValidatedRequest } from '../types/types';
@@ -13,9 +15,6 @@ import { sendResetEmail } from '../utils/send-email.util';
 
 /**
  * Sends Forgot password email
- * @param req
- * @param res
- * @returns
  */
 export const handleForgotPassword = async (
   req: ValidatedRequest<ForgotPasswordDTO>,
@@ -86,39 +85,88 @@ export const handleForgotPassword = async (
 
 /**
  * Handles Password reset
- * @param req
- * @param res
- * @returns
  */
 export const handleResetPassword = async (
   req: ValidatedRequest<ResetPasswordDTO>,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
-  const { token } = req.params;
-  const { newPassword } = req.body;
+  try {
+    const { token } = req.params;
+    const { newPassword } = req.body;
 
-  if (!token) return res.sendStatus(400);
+    if (!token) return res.sendStatus(400);
 
-  const resetToken = await prismaClient.resetPassword.findFirst({
-    where: { token, expiresAt: { gt: new Date() } },
-    select: { userId: true }
-  });
+    const resetToken = await prismaClient.resetPassword.findFirst({
+      where: { token, expiresAt: { gt: new Date() } },
+      select: { userId: true }
+    });
 
-  if (!resetToken) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    if (!resetToken) {
+      throw new HttpException(401, 'Invalid or expired token');
+    }
+
+    const hashedPassword = await argon2.hash(newPassword);
+    await prismaClient.user.update({
+      where: { id: resetToken.userId },
+      data: { password: hashedPassword }
+    });
+
+    await prismaClient.resetPassword.deleteMany({
+      where: { userId: resetToken.userId }
+    });
+
+    return res.status(200).json({ message: 'Password reset successful' });
+  } catch (error) {
+    next(error);
   }
+};
 
-  const hashedPassword = await argon2.hash(newPassword);
-  await prismaClient.user.update({
-    where: { id: resetToken.userId },
-    data: { password: hashedPassword }
-  });
+/**
+ * Handles Password change
+ */
 
-  await prismaClient.resetPassword.deleteMany({
-    where: { userId: resetToken.userId }
-  });
+export const handleChangePassword = async (
+  req: ValidatedRequest<ChangePasswordDTO>,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.payload?.userId) {
+      throw new HttpException(httpStatus.UNAUTHORIZED);
+    }
 
-  return res
-    .status(httpStatus.OK)
-    .json({ message: 'Password reset successful' });
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await prismaClient.user.findUnique({
+      where: { id: req.payload.userId },
+      select: { password: true }
+    });
+
+    if (!user) {
+      throw new HttpException(httpStatus.UNAUTHORIZED);
+    }
+
+    const isCurrentPasswordMatch = await argon2.verify(
+      user.password,
+      currentPassword
+    );
+
+    if (!isCurrentPasswordMatch) {
+      throw new HttpException(
+        httpStatus.UNAUTHORIZED,
+        'Current password is incorrect'
+      );
+    }
+
+    const hashedPassword = await argon2.hash(newPassword);
+    await prismaClient.user.update({
+      where: { id: req.payload.userId },
+      data: { password: hashedPassword }
+    });
+
+    return res.status(200).json({ message: 'Password changed successfully' });
+  } catch (error) {
+    next(error);
+  }
 };
