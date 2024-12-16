@@ -1,8 +1,10 @@
+import { Prisma } from '@prisma/client';
 import type { NextFunction, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import prismaClient from 'src/config/prisma';
 import type { ValidatedRequest } from 'src/types/types';
 import { HttpException } from 'src/utils/http-exception.util';
+import { sendSSEMessage } from 'src/utils/sse-notification.util';
 import type {
   AddProjectMemberDTO,
   CreateProjectDTO,
@@ -23,9 +25,7 @@ export const handleCreateProject = async (
     const { name, isTeamProject } = req.body;
     const userId = req.payload?.userId;
 
-    if (!userId) {
-      throw new HttpException(StatusCodes.UNAUTHORIZED);
-    }
+    if (!userId) throw new HttpException(StatusCodes.UNAUTHORIZED);
 
     const newProject = await prismaClient.$transaction(async (prisma) => {
       const project = await prisma.project.create({
@@ -72,6 +72,11 @@ export const handleGetProjectDetail = async (
       throw new HttpException(StatusCodes.UNAUTHORIZED);
     }
 
+    const isProjectOwner = await prismaClient.project.findFirst({
+      where: { ownerId: userId, id: projectId },
+      select: { id: true }
+    });
+
     const project = await prismaClient.project.findFirst({
       where: {
         id: projectId,
@@ -86,7 +91,7 @@ export const handleGetProjectDetail = async (
           skip: 0,
           take: 4,
           orderBy: {
-            createdAt: 'desc'
+            createdAt: 'asc'
           },
           select: {
             user: {
@@ -97,26 +102,24 @@ export const handleGetProjectDetail = async (
             }
           }
         },
-        TaskAssignee: {
+        tasks: {
           where: {
-            userId
-          },
-          orderBy: {
-            task: {
-              dueDate: 'asc'
+            assignedTo: {
+              some: isProjectOwner ? Prisma.skip : { userId },
+              every: isProjectOwner ? { projectId } : Prisma.skip
             }
           },
+          orderBy: { dueDate: 'desc' },
           select: {
-            task: {
-              select: {
-                title: true,
-                description: true,
-                status: true,
-                assignedTo: {
-                  select: { user: { select: { name: true, avatar: true } } }
-                },
-                dueDate: true
-              }
+            id: true,
+            title: true,
+            description: true,
+            status: true,
+            dueDate: true,
+            assignedTo: {
+              select: { user: { select: { name: true, avatar: true } } },
+              skip: 0,
+              take: 4
             }
           }
         }
@@ -127,9 +130,7 @@ export const handleGetProjectDetail = async (
       where: { projectId }
     });
 
-    if (!project) {
-      throw new HttpException(StatusCodes.NOT_FOUND);
-    }
+    if (!project) throw new HttpException(StatusCodes.NOT_FOUND);
 
     return res.status(200).json({ data: { project, total_members: members } });
   } catch (error) {
@@ -158,19 +159,32 @@ export const handleUpdateProjectName = async (
       where: {
         id: projectId,
         ownerId: userId
-      }
+      },
+      select: { id: true, name: true, members: { select: { userId: true } } }
     });
 
-    if (!isProjectExist) {
-      throw new HttpException(StatusCodes.UNAUTHORIZED);
-    }
+    if (!isProjectExist) throw new HttpException(StatusCodes.UNAUTHORIZED);
 
     await prismaClient.project.update({
       where: {
         id: projectId
       },
-      data: { name }
+      data: { name },
+      select: { id: true }
     });
+
+    isProjectExist.members = isProjectExist.members.filter(
+      (member) => member.userId !== userId
+    );
+
+    await sendSSEMessage(
+      isProjectExist.members.map((member) => member.userId),
+      {
+        type: 'PROJECT_RENAMED',
+        oldName: isProjectExist.name,
+        newName: name
+      }
+    );
 
     return res.status(200).json({ message: 'Project name has been updated' });
   } catch (error) {
@@ -200,24 +214,31 @@ export const handleDeleteProject = async (
       },
       select: {
         name: true,
-        ownerId: true
+        ownerId: true,
+        members: { select: { userId: true } }
       }
     });
 
-    if (!project) {
-      throw new HttpException(StatusCodes.NOT_FOUND);
-    }
+    if (!project) throw new HttpException(StatusCodes.NOT_FOUND);
 
     if (project.ownerId === userId) {
       const deletedProject = await prismaClient.project.delete({
         where: {
           id: projectId
-        }
+        },
+        select: { id: true }
       });
 
-      if (!deletedProject) {
-        throw new HttpException(StatusCodes.NOT_FOUND);
-      }
+      if (!deletedProject) throw new HttpException(StatusCodes.NOT_FOUND);
+
+      project.members = project.members.filter(
+        (member) => member.userId !== userId
+      );
+
+      await sendSSEMessage(
+        project.members.map((member) => member.userId),
+        { type: 'PROJECT_DELETED', projectName: project.name }
+      );
 
       return res.status(200).json({ message: 'Project has been deleted' });
     }
@@ -228,11 +249,25 @@ export const handleDeleteProject = async (
           userId,
           projectId
         }
-      }
+      },
+      select: { id: true }
     });
 
-    if (!quitProject) {
-      throw new HttpException(StatusCodes.NOT_FOUND);
+    if (!quitProject) throw new HttpException(StatusCodes.NOT_FOUND);
+
+    const user = await prismaClient.user.findFirst({
+      where: {
+        id: userId
+      },
+      select: { name: true }
+    });
+
+    if (user) {
+      await sendSSEMessage([project.ownerId], {
+        type: 'MEMBER_QUIT',
+        projectName: project.name,
+        memberName: user.name
+      });
     }
 
     return res
@@ -256,9 +291,7 @@ export const handleGetMembers = async (
     const limit = req.body.limit ?? 10;
     const { projectId } = req.params;
 
-    if (!projectId) {
-      throw new HttpException(StatusCodes.UNAUTHORIZED);
-    }
+    if (!projectId) throw new HttpException(StatusCodes.UNAUTHORIZED);
 
     const members = await prismaClient.projectMember.findMany({
       where: {
@@ -300,9 +333,7 @@ export const handleAddMember = async (
     const { projectId } = req.params;
     const { email } = req.body;
 
-    if (!projectId) {
-      throw new HttpException(StatusCodes.UNAUTHORIZED);
-    }
+    if (!projectId) throw new HttpException(StatusCodes.UNAUTHORIZED);
 
     const isAlreadyMember = await prismaClient.projectMember.findFirst({
       where: {
@@ -314,9 +345,7 @@ export const handleAddMember = async (
       select: { userId: true }
     });
 
-    if (isAlreadyMember) {
-      throw new HttpException(StatusCodes.CONFLICT);
-    }
+    if (isAlreadyMember) throw new HttpException(StatusCodes.CONFLICT);
 
     const newMember = await prismaClient.user.findFirst({
       where: {
@@ -327,16 +356,22 @@ export const handleAddMember = async (
       }
     });
 
-    if (!newMember) {
-      throw new HttpException(StatusCodes.NOT_FOUND);
-    }
+    if (!newMember) throw new HttpException(StatusCodes.NOT_FOUND);
 
-    await prismaClient.projectMember.create({
+    const members = await prismaClient.projectMember.create({
       data: {
         projectId,
         userId: newMember.id
-      }
+      },
+      select: { project: { select: { name: true } } }
     });
+
+    await sendSSEMessage([newMember.id], {
+      type: 'ADDED_TO_PROJECT',
+      projectName: members.project.name
+    });
+
+    return res.status(200).json({ message: 'Member has been added' });
   } catch (error) {
     next(error);
   }
@@ -354,9 +389,17 @@ export const handleRemoveMember = async (
     const { projectId } = req.params;
     const { userId } = req.body;
 
-    if (!projectId) {
-      throw new HttpException(StatusCodes.UNAUTHORIZED);
-    }
+    if (!projectId) throw new HttpException(StatusCodes.UNAUTHORIZED);
+
+    const isMember = await prismaClient.projectMember.findFirst({
+      where: {
+        projectId,
+        userId
+      },
+      select: { id: true }
+    });
+
+    if (!isMember) throw new HttpException(StatusCodes.NOT_FOUND);
 
     const deletedMember = await prismaClient.projectMember.delete({
       where: {
@@ -364,12 +407,16 @@ export const handleRemoveMember = async (
           userId,
           projectId
         }
-      }
+      },
+      select: { id: true, project: { select: { name: true } } }
     });
 
-    if (!deletedMember) {
-      throw new HttpException(StatusCodes.NOT_FOUND);
-    }
+    if (!deletedMember) throw new HttpException(StatusCodes.NOT_FOUND);
+
+    await sendSSEMessage([deletedMember.id], {
+      type: 'KICKED_FROM_PROJECT',
+      projectName: deletedMember.project.name
+    });
 
     return res.status(200).json({ message: 'Member has been removed' });
   } catch (error) {
@@ -414,7 +461,8 @@ export const handleToggleProjectToFavorite = async (
     await prismaClient.favoriteProject.delete({
       where: {
         id: isInFavorite.id
-      }
+      },
+      select: { id: true }
     });
 
     return res
@@ -459,6 +507,9 @@ export const handleToggleProjectToArchive = async (
     await prismaClient.archiveProject.delete({
       where: {
         id: isInArchive.id
+      },
+      select: {
+        id: true
       }
     });
 

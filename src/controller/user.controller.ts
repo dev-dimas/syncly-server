@@ -22,9 +22,7 @@ export const handleGetUser = async (
   try {
     const userId = req.payload?.userId;
 
-    if (!userId) {
-      throw new HttpException(StatusCodes.UNAUTHORIZED);
-    }
+    if (!userId) throw new HttpException(StatusCodes.UNAUTHORIZED);
 
     const allProjects = await prismaClient.project.findMany({
       where: {
@@ -108,9 +106,7 @@ export const handleUpdateUser = async (
       return res.status(200).json({ message: 'Nothing need to update' });
     }
 
-    if (!req.payload?.userId) {
-      throw new HttpException(StatusCodes.UNAUTHORIZED);
-    }
+    if (!req.payload?.userId) throw new HttpException(StatusCodes.UNAUTHORIZED);
 
     const user = await prismaClient.user.findUnique({
       where: {
@@ -123,9 +119,7 @@ export const handleUpdateUser = async (
       }
     });
 
-    if (!user) {
-      throw new HttpException(StatusCodes.NOT_FOUND, 'User not found');
-    }
+    if (!user) throw new HttpException(StatusCodes.NOT_FOUND, 'User not found');
 
     if (name) {
       user.name = name;
@@ -133,9 +127,7 @@ export const handleUpdateUser = async (
 
     if (email) {
       const checkUserEmail = await prismaClient.user.findUnique({
-        where: {
-          email
-        },
+        where: { email },
         select: { id: true }
       });
 
@@ -178,9 +170,7 @@ export const handleUpdateUser = async (
     }
 
     await prismaClient.user.update({
-      where: {
-        id: req.payload.userId
-      },
+      where: { id: req.payload.userId },
       data: { ...user }
     });
 

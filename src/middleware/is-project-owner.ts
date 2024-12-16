@@ -12,20 +12,17 @@ const isProjectOwner = async (
   const userId = req.payload?.userId;
   const { projectId } = req.params;
 
-  if (!userId || !projectId) {
-    throw new HttpException(StatusCodes.UNAUTHORIZED);
-  }
+  if (!userId || !projectId) throw new HttpException(StatusCodes.UNAUTHORIZED);
 
   const project = await prismaClient.project.findFirst({
     where: {
       id: projectId,
       ownerId: userId
-    }
+    },
+    select: { id: true }
   });
 
-  if (!project) {
-    throw new HttpException(StatusCodes.UNAUTHORIZED);
-  }
+  if (!project) throw new HttpException(StatusCodes.UNAUTHORIZED);
 
   next();
 };

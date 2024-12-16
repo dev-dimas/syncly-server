@@ -24,9 +24,7 @@ export const handleForgotPassword = async (
 
   const user = await prismaClient.user.findUnique({
     where: { email },
-    select: {
-      id: true
-    }
+    select: { id: true }
   });
 
   if (!user) {
@@ -37,16 +35,9 @@ export const handleForgotPassword = async (
   }
 
   const resetTokenExist = await prismaClient.resetPassword.findFirst({
-    where: {
-      userId: user.id
-    },
-    orderBy: {
-      createdAt: 'desc'
-    },
-    select: {
-      token: true,
-      expiresAt: true
-    }
+    where: { userId: user.id },
+    orderBy: { createdAt: 'desc' },
+    select: { token: true, expiresAt: true }
   });
 
   if (resetTokenExist) {
@@ -103,13 +94,17 @@ export const handleResetPassword = async (
     });
 
     if (!resetToken) {
-      throw new HttpException(401, 'Invalid or expired token');
+      throw new HttpException(
+        httpStatus.UNAUTHORIZED,
+        'Invalid or expired token'
+      );
     }
 
     const hashedPassword = await argon2.hash(newPassword);
     await prismaClient.user.update({
       where: { id: resetToken.userId },
-      data: { password: hashedPassword }
+      data: { password: hashedPassword },
+      select: { id: true }
     });
 
     await prismaClient.resetPassword.deleteMany({
@@ -132,9 +127,7 @@ export const handleChangePassword = async (
   next: NextFunction
 ) => {
   try {
-    if (!req.payload?.userId) {
-      throw new HttpException(httpStatus.UNAUTHORIZED);
-    }
+    if (!req.payload?.userId) throw new HttpException(httpStatus.UNAUTHORIZED);
 
     const { currentPassword, newPassword } = req.body;
 
@@ -143,9 +136,7 @@ export const handleChangePassword = async (
       select: { password: true }
     });
 
-    if (!user) {
-      throw new HttpException(httpStatus.UNAUTHORIZED);
-    }
+    if (!user) throw new HttpException(httpStatus.UNAUTHORIZED);
 
     const isCurrentPasswordMatch = await argon2.verify(
       user.password,
@@ -162,7 +153,8 @@ export const handleChangePassword = async (
     const hashedPassword = await argon2.hash(newPassword);
     await prismaClient.user.update({
       where: { id: req.payload.userId },
-      data: { password: hashedPassword }
+      data: { password: hashedPassword },
+      select: { id: true }
     });
 
     return res.status(200).json({ message: 'Password changed successfully' });

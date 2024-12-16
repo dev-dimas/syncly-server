@@ -13,10 +13,11 @@ describe('errorHandler Middleware', () => {
       status: jest.fn().mockReturnThis(),
       json: jest.fn()
     } as unknown as Response;
+    const monckNext = jest.fn();
 
     const error = new Error('Something went wrong');
 
-    errorHandler(error, mockReq, mockRes);
+    errorHandler(error, mockReq, mockRes, monckNext);
 
     expect(logger.error).toHaveBeenCalledWith(error);
 

@@ -20,9 +20,8 @@ export const handleSignUp = async (
     const { name, email, password } = req.body;
 
     const checkUserEmail = await prismaClient.user.findUnique({
-      where: {
-        email
-      }
+      where: { email },
+      select: { email: true }
     });
 
     if (checkUserEmail) {
@@ -65,9 +64,8 @@ export const handleLogin = async (
     const { email, password } = req.body;
 
     const user = await prismaClient.user.findUnique({
-      where: {
-        email
-      }
+      where: { email },
+      select: { id: true, email: true, password: true }
     });
 
     if (!user) {

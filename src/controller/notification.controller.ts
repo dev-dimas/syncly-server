@@ -16,9 +16,7 @@ export const handleSSENotification = async (
   try {
     const userId = req.payload?.userId;
 
-    if (!userId) {
-      throw new HttpException(StatusCodes.UNAUTHORIZED);
-    }
+    if (!userId) throw new HttpException(StatusCodes.UNAUTHORIZED);
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -36,7 +34,12 @@ export const handleSSENotification = async (
     });
 
     const client: SSEClient = { id: userId, response: res };
-    sseClients.push(client);
+    const isClientAlreadyExists = sseClients.some(
+      (client) => client.id === userId
+    );
+    if (!isClientAlreadyExists) {
+      sseClients.push(client);
+    }
 
     res.write(`data: ${JSON.stringify(notifications)}\n\n`);
     res.flush();
@@ -59,9 +62,7 @@ export const handleReadAllNotification = async (
   try {
     const userId = req.payload?.userId;
 
-    if (!userId) {
-      throw new HttpException(StatusCodes.UNAUTHORIZED);
-    }
+    if (!userId) throw new HttpException(StatusCodes.UNAUTHORIZED);
 
     await prismaClient.notificationUser.updateMany({
       where: {

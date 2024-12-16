@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["strictUndefinedChecks"]
 }
 
 datasource db {
@@ -18,8 +19,8 @@ model User {
   tasks            TaskAssignee[]
   favoriteProjects FavoriteProject[]
   archiveProjects  ArchiveProject[]
-  ProjectMember    ProjectMember[]
-  NotificationUser NotificationUser[]
+  projectMember    ProjectMember[]
+  notificationUser NotificationUser[]
   createdAt        DateTime           @default(now()) @map("created_at")
   updatedAt        DateTime           @updatedAt @map("updated_at")
 
@@ -46,9 +47,9 @@ model Project {
   isTeamProject   Boolean           @default(false) @map("is_team_project")
   tasks           Task[]
   members         ProjectMember[]
-  FavoriteProject FavoriteProject[]
-  ArchiveProject  ArchiveProject[]
-  TaskAssignee    TaskAssignee[]
+  favoriteProject FavoriteProject[]
+  archiveProject  ArchiveProject[]
+  taskAssignee    TaskAssignee[]
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
