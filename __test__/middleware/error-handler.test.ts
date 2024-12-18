@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import logger from '../../src/middleware/logger';
-import { errorHandler } from '../../src/middleware/error-handler';
-import { HttpException } from '../../src/utils/http-exception.util';
+import logger from 'src/middleware/logger';
+import { errorHandler } from 'src/middleware/error-handler';
+import { HttpException } from 'src/utils/http-exception.util';
 import express, {
   type NextFunction,
   type Request,
   type Response
 } from 'express';
 
-jest.mock('../../src/middleware/logger', () => ({
+jest.mock('src/middleware/logger', () => ({
   error: jest.fn()
 }));
 
@@ -39,6 +39,7 @@ describe('errorHandler middleware', () => {
   it('should handle invalid JSON and return 400 with Invalid body format message', async () => {
     const err = new SyntaxError('Unexpected token');
     (err as any).body = {};
+    Object.assign(err, { body: {} });
     const mockReq = {} as Request;
     const mockRes = {
       status: jest.fn().mockReturnThis(),

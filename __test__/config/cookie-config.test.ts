@@ -1,7 +1,7 @@
 import {
   accessTokenCookieConfig,
   clearAccessTokenCookieConfig
-} from '../../src/config/cookie-config';
+} from 'src/config/cookie-config';
 
 describe('Cookie Configuration', () => {
   test('accessTokenCookieConfig should have correct values', () => {

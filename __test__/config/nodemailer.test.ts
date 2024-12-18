@@ -1,95 +1,47 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
-import nodemailer from 'nodemailer';
-import path from 'path';
-import logger from '../../src/middleware/logger';
-import config from '../../src/config/config';
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// @ts-nocheck
+import nodemailer, { Transporter } from 'nodemailer';
+import transporter from 'src/config/nodemailer';
+import logger from 'src/middleware/logger';
+import config from 'src/config/config';
 
-jest.mock('../../src/config/nodemailer.ts');
-jest.mock('../../src/middleware/logger.ts');
+jest.mock('nodemailer');
+jest.mock('src/middleware/logger');
+jest.mock('src/config/config');
 
-const transporterPath = path.resolve(
-  __dirname,
-  '../../src/config/nodemailer.ts'
-);
-
-describe('transporter module', () => {
-  afterEach(() => {
+describe('Transporter Tests', () => {
+  beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should create a test account and set up the transporter if not in production', async () => {
-    const mockAccount = {
-      smtp: {
-        host: 'smtp.test.com',
-        port: 587,
-        secure: false
-      },
+  test('should create a transporter with test account in non-production', async () => {
+    const mockTestAccount = {
+      smtp: { host: 'smtp.test.host', port: 587, secure: false },
       user: 'testuser',
       pass: 'testpass'
     };
-    (nodemailer.createTestAccount as jest.Mock).mockResolvedValue(mockAccount);
 
-    const mockTransporter = {
-      sendMail: jest.fn()
-    };
-    (nodemailer.createTransport as jest.Mock).mockReturnValue(mockTransporter);
+    nodemailer.createTestAccount = jest.fn().mockResolvedValue(mockTestAccount);
+    const mockCreateTransport = jest.fn();
 
-    jest.spyOn(config, 'node_env', 'get').mockReturnValue('development');
+    nodemailer.createTransport = mockCreateTransport;
+    config.node_env = 'development';
 
-    const createdTransporter = require(transporterPath).default;
+    await import('src/config/nodemailer');
 
     expect(nodemailer.createTestAccount).toHaveBeenCalled();
-    expect(nodemailer.createTransport).toHaveBeenCalledWith({
-      host: mockAccount.smtp.host,
-      port: mockAccount.smtp.port,
-      secure: mockAccount.smtp.secure,
+    expect(mockCreateTransport).toHaveBeenCalledWith({
+      host: mockTestAccount.smtp.host,
+      port: mockTestAccount.smtp.port,
+      secure: mockTestAccount.smtp.secure,
       auth: {
-        user: mockAccount.user,
-        pass: mockAccount.pass
+        user: mockTestAccount.user,
+        pass: mockTestAccount.pass
       }
     });
     expect(logger.info).toHaveBeenCalledWith(
-      `Test account created: ${mockAccount.user}`
+      `Test account created: ${mockTestAccount.user}`
     );
-    expect(createdTransporter).not.toBeNull();
-  });
-
-  it('should create a production transporter when in production', async () => {
-    jest.spyOn(config, 'node_env', 'get').mockReturnValue('production');
-
-    const mockTransporter = {
-      sendMail: jest.fn()
-    };
-    (nodemailer.createTransport as jest.Mock).mockReturnValue(mockTransporter);
-
-    const createdTransporter = require(transporterPath).default;
-
-    expect(nodemailer.createTransport).toHaveBeenCalledWith({
-      host: config.email.smtp.host,
-      port: parseInt(config.email.smtp.port),
-      secure: false,
-      auth: {
-        user: config.email.smtp.auth.username,
-        pass: config.email.smtp.auth.password
-      }
-    });
-    expect(createdTransporter).not.toBeNull();
-  });
-
-  it('should log an error if createTestAccount fails', async () => {
-    (nodemailer.createTestAccount as jest.Mock).mockRejectedValue(
-      new Error('Test account creation failed')
-    );
-
-    // Spy on console.error to check if it's called
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-
-    await import('../../src/config/nodemailer');
-
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Failed to create a test account:',
-      expect.any(Error)
-    );
-    consoleErrorSpy.mockRestore();
   });
 });

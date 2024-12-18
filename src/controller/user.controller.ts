@@ -4,11 +4,9 @@ import type { NextFunction, Response } from 'express';
 import fs from 'fs';
 import { StatusCodes } from 'http-status-codes';
 import path from 'path';
-import sharp from 'sharp';
 import prismaClient from 'src/config/prisma';
 import { type ValidatedRequest } from 'src/types/types';
 import { HttpException } from 'src/utils/http-exception.util';
-import { pathUpload } from 'src/utils/path-upload.util';
 import { type UpdateUserDTO } from 'src/validations/user.validation';
 
 /**
@@ -54,7 +52,7 @@ export const handleUpdateUser = async (
   try {
     const { name, email, deleteAvatar } = req.body;
 
-    if (!name && !email && !req.file) {
+    if (!name && !email) {
       return res.status(200).json({ message: 'Nothing need to update' });
     }
 
@@ -105,20 +103,6 @@ export const handleUpdateUser = async (
       });
 
       user.avatar = null;
-    }
-
-    if (req.file) {
-      const { outputPath, publicPath } = pathUpload({
-        folder: '/users',
-        filename: req.payload.userId
-      });
-
-      await sharp(req.file.buffer)
-        .resize(1500)
-        .webp({ quality: 80 })
-        .toFile(outputPath);
-
-      user.avatar = publicPath;
     }
 
     await prismaClient.user.update({

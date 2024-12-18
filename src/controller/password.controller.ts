@@ -41,7 +41,7 @@ export const handleForgotPassword = async (
   });
 
   if (resetTokenExist) {
-    if (dayjs(resetTokenExist.expiresAt).isBefore(dayjs())) {
+    if (dayjs().isBefore(dayjs(resetTokenExist.expiresAt))) {
       sendResetEmail(email, resetTokenExist.token);
       return res.status(200).json({
         message:

@@ -1,17 +1,17 @@
-import transporter from '../../src/config/nodemailer';
-import logger from '../../src/middleware/logger';
-import { sendResetEmail } from '../../src/utils/send-email.util';
+import transporter from 'src/config/nodemailer';
+import logger from 'src/middleware/logger';
+import { sendResetEmail } from 'src/utils/send-email.util';
 
-jest.mock('../../src/config/nodemailer', () => ({
+jest.mock('src/config/nodemailer', () => ({
   sendMail: jest.fn()
 }));
 
-jest.mock('../../src/middleware/logger', () => ({
+jest.mock('src/middleware/logger', () => ({
   error: jest.fn(),
   info: jest.fn()
 }));
 
-jest.mock('../../src/config/config', () => ({
+jest.mock('src/config/config', () => ({
   server: { url: 'http://example.com' },
   email: { from: 'test@example.com' }
 }));

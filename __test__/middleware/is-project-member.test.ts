@@ -1,22 +1,21 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 // @ts-nocheck
 import { type NextFunction, type Request, type Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import prismaClient from 'src/config/prisma';
 import { HttpException } from 'src/utils/http-exception.util';
-import isProjectOwner from 'src/middleware/is-project-owner';
+import isProjectMember from 'src/middleware/is-project-member';
 
 jest.mock('src/config/prisma', () => ({
   __esModule: true,
   default: {
-    project: {
+    projectMember: {
       findFirst: jest.fn()
     }
   }
 }));
 
-describe('isProjectOwner Middleware', () => {
+describe('isProjectMember Middleware', () => {
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
   let nextFunction: NextFunction;
@@ -28,7 +27,8 @@ describe('isProjectOwner Middleware', () => {
       },
       params: {
         projectId: 'project-123'
-      }
+      },
+      body: {}
     };
     mockResponse = {};
     nextFunction = jest.fn();
@@ -38,23 +38,47 @@ describe('isProjectOwner Middleware', () => {
     jest.clearAllMocks();
   });
 
-  it('should call next() when user is project owner', async () => {
-    (prismaClient.project.findFirst as jest.Mock).mockResolvedValueOnce({
-      id: 'project-123'
+  it('should call next() when user is project member with projectId in params', async () => {
+    (prismaClient.projectMember.findFirst as jest.Mock).mockResolvedValueOnce({
+      userId: 'user-123'
     });
 
-    await isProjectOwner(
+    await isProjectMember(
       mockRequest as Request,
       mockResponse as Response,
       nextFunction
     );
 
-    expect(prismaClient.project.findFirst).toHaveBeenCalledWith({
+    expect(prismaClient.projectMember.findFirst).toHaveBeenCalledWith({
       where: {
-        id: 'project-123',
-        ownerId: 'user-123'
+        projectId: 'project-123',
+        userId: 'user-123'
       },
-      select: { id: true }
+      select: { userId: true }
+    });
+    expect(nextFunction).toHaveBeenCalled();
+  });
+
+  it('should call next() when user is project member with projectId in body', async () => {
+    mockRequest.params = {};
+    mockRequest.body = { projectId: 'project-123' };
+
+    (prismaClient.projectMember.findFirst as jest.Mock).mockResolvedValueOnce({
+      userId: 'user-123'
+    });
+
+    await isProjectMember(
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction
+    );
+
+    expect(prismaClient.projectMember.findFirst).toHaveBeenCalledWith({
+      where: {
+        projectId: 'project-123',
+        userId: 'user-123'
+      },
+      select: { userId: true }
     });
     expect(nextFunction).toHaveBeenCalled();
   });
@@ -63,44 +87,47 @@ describe('isProjectOwner Middleware', () => {
     mockRequest.payload = {};
 
     await expect(
-      isProjectOwner(
+      isProjectMember(
         mockRequest as Request,
         mockResponse as Response,
         nextFunction
       )
     ).rejects.toThrow(new HttpException(StatusCodes.UNAUTHORIZED));
 
-    expect(prismaClient.project.findFirst).not.toHaveBeenCalled();
+    expect(prismaClient.projectMember.findFirst).not.toHaveBeenCalled();
     expect(nextFunction).not.toHaveBeenCalled();
   });
 
   it('should throw UNAUTHORIZED when projectId is missing', async () => {
     mockRequest.params = {};
+    mockRequest.body = {};
 
     await expect(
-      isProjectOwner(
+      isProjectMember(
         mockRequest as Request,
         mockResponse as Response,
         nextFunction
       )
     ).rejects.toThrow(new HttpException(StatusCodes.UNAUTHORIZED));
 
-    expect(prismaClient.project.findFirst).not.toHaveBeenCalled();
+    expect(prismaClient.projectMember.findFirst).not.toHaveBeenCalled();
     expect(nextFunction).not.toHaveBeenCalled();
   });
 
-  it('should throw UNAUTHORIZED when project is not found', async () => {
-    (prismaClient.project.findFirst as jest.Mock).mockResolvedValueOnce(null);
+  it('should throw UNAUTHORIZED when user is not a project member', async () => {
+    (prismaClient.projectMember.findFirst as jest.Mock).mockResolvedValueOnce(
+      null
+    );
 
     await expect(
-      isProjectOwner(
+      isProjectMember(
         mockRequest as Request,
         mockResponse as Response,
         nextFunction
       )
     ).rejects.toThrow(new HttpException(StatusCodes.UNAUTHORIZED));
 
-    expect(prismaClient.project.findFirst).toHaveBeenCalled();
+    expect(prismaClient.projectMember.findFirst).toHaveBeenCalled();
     expect(nextFunction).not.toHaveBeenCalled();
   });
 });

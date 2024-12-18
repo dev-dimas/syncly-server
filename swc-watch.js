@@ -32,18 +32,16 @@ swcDir({
     onWatchReady: () => {
       console.log('Running nodemon...');
 
-      // Hentikan proses nodemon lama jika masih berjalan
       if (nodemonProcess) {
         console.log('Restarting nodemon...');
         nodemonProcess.kill();
       }
 
-      // Mulai proses nodemon baru
       nodemonProcess = spawn('nodemon', [], { stdio: 'inherit', shell: true });
 
       nodemonProcess.on('close', (code) => {
         console.log(`Nodemon process exited with code ${code}`);
-        nodemonProcess = null; // Hapus referensi proses setelah selesai
+        nodemonProcess = null;
       });
 
       nodemonProcess.on('error', (err) => {
@@ -53,7 +51,6 @@ swcDir({
   }
 });
 
-// Tangani penghentian aplikasi
 process.on('SIGTERM', () => {
   console.log('SIGTERM received. Shutting down...');
   if (nodemonProcess) nodemonProcess.kill();

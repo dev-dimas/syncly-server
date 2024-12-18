@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
-import config from '../../src/config/config';
-import { createAccessToken } from '../../src/utils/generate-tokens.util';
+import config from 'src/config/config';
+import { createAccessToken } from 'src/utils/generate-tokens.util';
 
 jest.mock('jsonwebtoken');
 

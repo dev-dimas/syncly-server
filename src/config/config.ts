@@ -59,6 +59,6 @@ const config = {
     },
     from: validatedEnv.EMAIL_FROM
   }
-} as const;
+};
 
 export default config;

@@ -1,73 +1,114 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// @ts-nocheck
+
 import httpStatus from 'http-status';
 import type { NextFunction, Request, Response } from 'express';
-import isAuth from '../../src/middleware/is-auth';
+import isAuth from 'src/middleware/is-auth';
 import jwt, { type JwtPayload } from 'jsonwebtoken';
-import config from '../../src/config/config';
+import config from 'src/config/config';
+import { HttpException } from 'src/utils/http-exception.util';
 
 const { sign } = jwt;
 
 describe('isAuth middleware', () => {
-  let req: Request;
-  let res: Response;
+  let req: Partial<Request>;
+  let res: Partial<Response>;
   let next: NextFunction;
 
   beforeEach(() => {
-    req = {} as Request;
-    res = {
-      sendStatus: jest.fn()
-    } as unknown as Response;
+    req = {};
+    res = {};
     next = jest.fn();
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
-  it('should return 401 if no authorization header is present', () => {
-    isAuth(req, res, next);
-
-    expect(res.sendStatus).toHaveBeenCalledWith(httpStatus.UNAUTHORIZED);
+  it('should throw HttpException with status 401 if no authorization header is present', () => {
+    expect(() => {
+      isAuth(req as Request, res as Response, next);
+    }).toThrow(HttpException);
+    expect(() => {
+      isAuth(req as Request, res as Response, next);
+    }).toThrow(expect.objectContaining({ status: httpStatus.UNAUTHORIZED }));
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('should return 401 if authorization header does not start with "Bearer "', () => {
+  it('should throw HttpException with status 401 if authorization header is empty', () => {
+    req.headers = { authorization: '' };
+
+    expect(() => {
+      isAuth(req as Request, res as Response, next);
+    }).toThrow(HttpException);
+    expect(() => {
+      isAuth(req as Request, res as Response, next);
+    }).toThrow(expect.objectContaining({ status: httpStatus.UNAUTHORIZED }));
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('should throw HttpException with status 401 if authorization header does not start with "Bearer "', () => {
     req.headers = { authorization: 'InvalidToken' };
 
-    isAuth(req, res, next);
-
-    expect(res.sendStatus).toHaveBeenCalledWith(httpStatus.UNAUTHORIZED);
+    expect(() => {
+      isAuth(req as Request, res as Response, next);
+    }).toThrow(HttpException);
+    expect(() => {
+      isAuth(req as Request, res as Response, next);
+    }).toThrow(expect.objectContaining({ status: httpStatus.UNAUTHORIZED }));
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('should return 401 if token is undefined', () => {
-    req.headers = { authorization: 'Bearer  ' };
+  it('should throw HttpException with status 401 if token is empty', () => {
+    req.headers = { authorization: 'Bearer ' };
 
-    isAuth(req, res, next);
-
-    expect(res.sendStatus).toHaveBeenCalledWith(httpStatus.UNAUTHORIZED);
+    expect(() => {
+      isAuth(req as Request, res as Response, next);
+    }).toThrow(HttpException);
+    expect(() => {
+      isAuth(req as Request, res as Response, next);
+    }).toThrow(expect.objectContaining({ status: httpStatus.UNAUTHORIZED }));
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('should return 403 if token is invalid', () => {
-    req.headers = { authorization: 'Bearer InvalidToken' };
+  it('should throw HttpException with status 403 if token is invalid', () => {
+    req.headers = { authorization: 'Bearer invalidtoken' };
 
-    isAuth(req, res, next);
-
-    expect(res.sendStatus).toHaveBeenCalledWith(httpStatus.FORBIDDEN);
+    expect(() => {
+      isAuth(req as Request, res as Response, next);
+    }).toThrow(HttpException);
+    expect(() => {
+      isAuth(req as Request, res as Response, next);
+    }).toThrow(expect.objectContaining({ status: httpStatus.FORBIDDEN }));
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('should call next() if token is valid', () => {
+  it('should throw HttpException with status 403 if token is expired', () => {
+    const expiredToken = sign(
+      { userId: '123' },
+      config.jwt.access_token.secret,
+      { expiresIn: '0s' }
+    );
+    req.headers = { authorization: `Bearer ${expiredToken}` };
+
+    expect(() => {
+      isAuth(req as Request, res as Response, next);
+    }).toThrow(HttpException);
+    expect(() => {
+      isAuth(req as Request, res as Response, next);
+    }).toThrow(expect.objectContaining({ status: httpStatus.FORBIDDEN }));
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('should set payload and call next() if token is valid', () => {
     const payload: JwtPayload = { userId: '123' };
     const token = sign(payload, config.jwt.access_token.secret);
-
     req.headers = { authorization: `Bearer ${token}` };
 
-    isAuth(req, res, next);
+    isAuth(req as Request, res as Response, next);
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment, @typescript-eslint/prefer-ts-expect-error
-    // @ts-ignore
-    expect(req.payload).toBeDefined();
-    expect(next).toHaveBeenCalled();
+    expect(req.payload).toEqual(expect.objectContaining(payload));
+    expect(next).toHaveBeenCalledTimes(1);
   });
 });

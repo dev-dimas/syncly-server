@@ -1,6 +1,6 @@
 import compression from 'compression';
 import type { Request, Response } from 'express';
-import compressFilter from '../../src/utils/compress-filter.util';
+import compressFilter from 'src/utils/compress-filter.util';
 
 jest.mock('compression');
 

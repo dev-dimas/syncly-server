@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression */
-import type { SanitizeOptions } from '../../src/types/types';
-import { sanitize } from '../../src/utils/sanitize.util';
+import type { SanitizeOptions } from 'src/types/types';
+import { sanitize } from 'src/utils/sanitize.util';
 
 describe('sanitize', () => {
   it('should return empty data as is', () => {

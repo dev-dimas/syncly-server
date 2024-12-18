@@ -1,4 +1,4 @@
-import validate from '../../src/middleware/validate';
+import validate from 'src/middleware/validate';
 import httpStatus from 'http-status';
 import Joi from 'joi';
 import { type Request, type Response } from 'express';

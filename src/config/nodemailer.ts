@@ -24,6 +24,7 @@ const createTestAccount = async () => {
 };
 
 if (config.node_env === 'production') {
+  console.log('Sebelum');
   transporter = nodemailer.createTransport({
     host: config.email.smtp.host,
     port: parseInt(config.email.smtp.port),
@@ -33,6 +34,7 @@ if (config.node_env === 'production') {
       pass: config.email.smtp.auth.password
     }
   });
+  console.log('Sesudah');
 } else {
   void createTestAccount();
 }

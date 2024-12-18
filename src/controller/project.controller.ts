@@ -311,14 +311,12 @@ export const handleDeleteProject = async (
     if (!project) throw new HttpException(StatusCodes.NOT_FOUND);
 
     if (project.ownerId === userId) {
-      const deletedProject = await prismaClient.project.delete({
+      await prismaClient.project.delete({
         where: {
           id: projectId
         },
         select: { id: true }
       });
-
-      if (!deletedProject) throw new HttpException(StatusCodes.NOT_FOUND);
 
       project.members = project.members.filter(
         (member) => member.userId !== userId
@@ -332,7 +330,7 @@ export const handleDeleteProject = async (
       return res.status(200).json({ message: 'Project has been deleted' });
     }
 
-    const quitProject = await prismaClient.projectMember.delete({
+    await prismaClient.projectMember.delete({
       where: {
         userId_projectId: {
           userId,
@@ -341,8 +339,6 @@ export const handleDeleteProject = async (
       },
       select: { id: true }
     });
-
-    if (!quitProject) throw new HttpException(StatusCodes.NOT_FOUND);
 
     await prismaClient.taskAssignee.deleteMany({
       where: { projectId, userId }
@@ -380,11 +376,13 @@ export const handleGetMembers = async (
   next: NextFunction
 ) => {
   try {
-    const page = Number(req.query.page) ?? 1;
-    const limit = Number(req.query.limit) ?? 10;
+    const page = Number(req.query.page);
+    const limit = Number(req.query.limit);
     const { projectId } = req.params;
 
-    if (!projectId) throw new HttpException(StatusCodes.UNAUTHORIZED);
+    if (!projectId || !page || !limit) {
+      throw new HttpException(StatusCodes.UNAUTHORIZED);
+    }
 
     const members = await prismaClient.projectMember.findMany({
       where: {
