@@ -11,6 +11,9 @@
     "outDir": "dist",
     "baseUrl": ".",
     "sourceRoot": "./src",
+    "paths": {
+      "src/*": ["src/*"]
+    },
     "incremental": true,
     "skipLibCheck": true,
     "typeRoots": ["./node_modules/@types", "./src/types"],

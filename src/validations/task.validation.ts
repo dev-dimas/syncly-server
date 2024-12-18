@@ -17,7 +17,7 @@ const notBeforeToday: Joi.CustomValidator = (value, helpers) => {
 
 export const taskIdParams = {
   params: Joi.object().keys({
-    taskId: Joi.string().uuid().required()
+    taskId: Joi.string().required()
   })
 };
 
@@ -32,7 +32,7 @@ export const createTaskSchema = {
     title: Joi.string().required().min(3).max(100),
     description: Joi.string().min(3).max(1000),
     dueDate: Joi.date().required().custom(notBeforeToday),
-    projectId: Joi.string().uuid().required()
+    projectId: Joi.string().required()
   })
 };
 
@@ -58,7 +58,7 @@ export interface AddTaskAssigneeDTO {
 }
 export const addTaskAssigneeSchema = {
   body: Joi.object<AddTaskAssigneeDTO>().keys({
-    userId: Joi.string().uuid().required()
+    userId: Joi.string().required()
   }),
   ...taskIdParams
 };

@@ -1,21 +1,21 @@
 /* eslint-disable node/prefer-promises/fs */
 /* eslint-disable security/detect-non-literal-fs-filename */
-import type { NextFunction, Request, Response } from 'express';
+import type { NextFunction, Response } from 'express';
+import fs from 'fs';
 import { StatusCodes } from 'http-status-codes';
+import path from 'path';
 import sharp from 'sharp';
 import prismaClient from 'src/config/prisma';
 import { type ValidatedRequest } from 'src/types/types';
 import { HttpException } from 'src/utils/http-exception.util';
 import { pathUpload } from 'src/utils/path-upload.util';
 import { type UpdateUserDTO } from 'src/validations/user.validation';
-import path from 'path';
-import fs from 'fs';
 
 /**
  * Handles get user profile
  */
 export const handleGetUser = async (
-  req: Request,
+  req: ValidatedRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -24,68 +24,20 @@ export const handleGetUser = async (
 
     if (!userId) throw new HttpException(StatusCodes.UNAUTHORIZED);
 
-    const allProjects = await prismaClient.project.findMany({
+    const user = await prismaClient.user.findUnique({
       where: {
-        OR: [
-          {
-            isTeamProject: true,
-            members: { some: { userId } }
-          },
-          { isTeamProject: false, ownerId: userId }
-        ]
+        id: userId
       },
       select: {
-        id: true,
         name: true,
-        isTeamProject: true,
-        members: {
-          where: { userId },
-          select: { userId: true }
-        },
-        ownerId: true
+        email: true,
+        avatar: true
       }
     });
 
-    const favoriteProjectIdsSet = new Set(
-      await prismaClient.favoriteProject
-        .findMany({
-          where: { userId },
-          select: { projectId: true }
-        })
-        .then((results) => results.map((res) => res.projectId))
-    );
+    if (!user) throw new HttpException(StatusCodes.NOT_FOUND, 'User not found');
 
-    const archiveProjectIdsSet = new Set(
-      await prismaClient.archiveProject
-        .findMany({
-          where: { userId },
-          select: { projectId: true }
-        })
-        .then((results) => results.map((res) => res.projectId))
-    );
-
-    const teamProjects: Array<Record<string, string | boolean>> = [];
-    const personalProjects: Array<Record<string, string | boolean>> = [];
-
-    allProjects.forEach((project) => {
-      const projectData = {
-        id: project.id,
-        name: project.name,
-        is_favorite: favoriteProjectIdsSet.has(project.id),
-        is_archived: archiveProjectIdsSet.has(project.id)
-      };
-
-      if (project.isTeamProject) {
-        teamProjects.push(projectData);
-      } else {
-        personalProjects.push(projectData);
-      }
-    });
-
-    return res.status(200).json({
-      team_projects: teamProjects,
-      personal_projects: personalProjects
-    });
+    return res.status(StatusCodes.OK).json({ data: { ...user } });
   } catch (error) {
     next(error);
   }

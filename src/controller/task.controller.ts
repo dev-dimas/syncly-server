@@ -84,7 +84,8 @@ export const handleUpdateTask = async (
         description: true,
         status: true,
         dueDate: true,
-        assignedTo: { select: { userId: true } }
+        assignedTo: { select: { userId: true } },
+        project: { select: { name: true } }
       }
     });
 
@@ -124,6 +125,7 @@ export const handleUpdateTask = async (
     if (task.title !== updatedTask.title) {
       await sendSSEMessage(clientIds, {
         type: 'TASK_RENAMED',
+        projectName: task.project.name,
         oldName: task.title,
         newName: updatedTask.title
       });
@@ -132,6 +134,7 @@ export const handleUpdateTask = async (
     if (task.status !== updatedTask.status) {
       await sendSSEMessage(clientIds, {
         type: 'TASK_STATUS_CHANGED',
+        projectName: task.project.name,
         taskName: updatedTask.title,
         updatedData: updatedTask.status,
         by: updatedBy?.name ?? userId
@@ -141,6 +144,7 @@ export const handleUpdateTask = async (
     if (task.dueDate !== updatedTask.dueDate) {
       await sendSSEMessage(clientIds, {
         type: 'TASK_DUEDATE_CHANGED',
+        projectName: task.project.name,
         taskName: updatedTask.title,
         updatedData: dayjs(updatedTask.dueDate).format('DD MMM YYYY'),
         by: updatedBy?.name ?? userId
@@ -163,8 +167,9 @@ export const handleGetTaskDetail = async (
 ) => {
   try {
     const { taskId } = req.params;
+    const userId = req.payload?.userId;
 
-    if (!taskId) throw new HttpException(StatusCodes.BAD_REQUEST);
+    if (!taskId || !userId) throw new HttpException(StatusCodes.BAD_REQUEST);
 
     const task = await prismaClient.task.findFirst({
       where: { id: taskId },
@@ -173,6 +178,12 @@ export const handleGetTaskDetail = async (
         title: true,
         description: true,
         status: true,
+        dueDate: true,
+        project: {
+          select: {
+            ownerId: true
+          }
+        },
         assignedTo: {
           select: {
             user: {
@@ -186,7 +197,7 @@ export const handleGetTaskDetail = async (
 
     if (!task) throw new HttpException(StatusCodes.NOT_FOUND);
 
-    res.status(200).json({ data: { task } });
+    return res.status(200).json({ data: { task } });
   } catch (error) {
     next(error);
   }
@@ -210,7 +221,8 @@ export const handleDeleteTask = async (
       where: { id: taskId },
       select: {
         title: true,
-        assignedTo: { select: { userId: true } }
+        assignedTo: { select: { userId: true } },
+        project: { select: { name: true } }
       }
     });
 
@@ -227,6 +239,7 @@ export const handleDeleteTask = async (
         .map((user) => user.userId),
       {
         type: 'TASK_DELETED',
+        projectName: deletedTask.project.name,
         taskName: deletedTask.title,
         by: deletedBy?.name ?? userId
       }
@@ -235,6 +248,73 @@ export const handleDeleteTask = async (
     return res
       .status(200)
       .json({ message: `Task ${deletedTask.title} has been deleted` });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Handle get all tasks assignee
+ */
+export const handleGetTasksAssignee = async (
+  req: ValidatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { taskId } = req.params;
+    const userId = req.payload?.userId;
+
+    if (!taskId || !userId) throw new HttpException(StatusCodes.BAD_REQUEST);
+
+    const task = await prismaClient.project.findFirst({
+      where: {
+        tasks: {
+          some: { id: taskId }
+        }
+      },
+      select: {
+        members: {
+          select: {
+            user: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        },
+        taskAssignee: {
+          where: { taskId },
+          select: {
+            user: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!task) throw new HttpException(StatusCodes.NOT_FOUND);
+
+    const taskAssignee = task.taskAssignee.map(({ user }) => ({
+      userId: user.id,
+      name: user.name
+    }));
+    const availableAssignee = task.members
+      .filter(
+        (member) =>
+          !taskAssignee.some((assignee) => assignee.userId === member.user.id)
+      )
+      .map((member) => ({
+        userId: member.user.id,
+        name: member.user.name
+      }));
+
+    res.status(200).json({ data: { userId, availableAssignee, taskAssignee } });
   } catch (error) {
     next(error);
   }
@@ -273,11 +353,9 @@ export const handleAddTaskAssignee = async (
     const isAssigneeFromMember = await prismaClient.task.findFirst({
       where: {
         id: taskId,
-        project: {
-          members: { some: { userId } }
-        }
+        project: { members: { some: { userId } } }
       },
-      select: { projectId: true }
+      select: { projectId: true, project: { select: { name: true } } }
     });
 
     if (!isAssigneeFromMember) {
@@ -317,6 +395,7 @@ export const handleAddTaskAssignee = async (
 
     await sendSSEMessage([addedUserId], {
       type: 'ASSIGNED_TO_TASK',
+      projectName: isAssigneeFromMember.project.name,
       taskName: addedUser.title,
       by: assignedBy?.name ?? userId
     });

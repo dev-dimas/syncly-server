@@ -15,7 +15,7 @@ export const resetPasswordSchema = {
     newPassword: Joi.string().required().min(6).max(150)
   }),
   params: Joi.object().keys({
-    token: Joi.string().uuid()
+    token: Joi.string()
   })
 };
 

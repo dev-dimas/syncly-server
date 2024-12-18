@@ -18,6 +18,7 @@ const projectRouter = Router();
 projectRouter.use(isAuth);
 
 // CRUD PROJECT
+projectRouter.get('/projects', projectController.handleGetAllProject);
 projectRouter.post(
   '/projects',
   validate(createProjectSchema),

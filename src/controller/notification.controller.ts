@@ -22,12 +22,17 @@ export const handleSSENotification = async (
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    const notifications = await prismaClient.notification.findMany({
-      where: { users: { some: { userId } } },
+    const notifications = await prismaClient.notificationUser.findMany({
+      where: { userId },
       select: {
-        title: true,
-        description: true,
-        createdAt: true
+        notification: {
+          select: {
+            title: true,
+            description: true,
+            createdAt: true
+          }
+        },
+        seen: true
       },
       orderBy: { createdAt: 'desc' },
       take: 75
@@ -41,7 +46,14 @@ export const handleSSENotification = async (
       sseClients.push(client);
     }
 
-    res.write(`data: ${JSON.stringify(notifications)}\n\n`);
+    res.write(
+      `data: ${JSON.stringify(
+        notifications.map((notif) => ({
+          ...notif.notification,
+          seen: notif.seen
+        }))
+      )}\n\n`
+    );
     res.flush();
 
     req.on('close', () => {

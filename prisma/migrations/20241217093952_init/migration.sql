@@ -107,6 +107,7 @@ CREATE TABLE "NotificationUser" (
     "notification_id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
     "seen" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "NotificationUser_pkey" PRIMARY KEY ("id")
 );

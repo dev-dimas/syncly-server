@@ -14,7 +14,7 @@ describe('createAccessToken', () => {
     const token = createAccessToken(userId);
 
     expect(mockedSign).toHaveBeenCalledWith(
-      { userID: userId },
+      { userId },
       config.jwt.access_token.secret,
       { expiresIn: config.jwt.access_token.expire }
     );
@@ -28,7 +28,7 @@ describe('createAccessToken', () => {
     const token = createAccessToken(userId);
 
     expect(mockedSign).toHaveBeenCalledWith(
-      { userID: userId },
+      { userId },
       config.jwt.access_token.secret,
       { expiresIn: config.jwt.access_token.expire }
     );

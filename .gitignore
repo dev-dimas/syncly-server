@@ -5,5 +5,6 @@ yarn.lock
 yarn-error.log
 logs/
 coverage/
+.nyc_output/
 uploads/
 data

@@ -32,19 +32,25 @@ export const handleSignUp = async (
     }
     const hashedPassword = await argon2.hash(password);
 
-    await prismaClient.user.create({
+    const user = await prismaClient.user.create({
       data: {
         name,
         email,
         password: hashedPassword
+      },
+      select: {
+        id: true
       }
     });
+
+    const accessToken = createAccessToken(user.id);
 
     res.status(httpStatus.CREATED).json({
       message: 'Account created!',
       data: {
         name,
-        email
+        email,
+        access_token: accessToken
       }
     });
   } catch (error) {
@@ -86,7 +92,7 @@ export const handleLogin = async (
 
     const accessToken = createAccessToken(user.id);
 
-    return res.json({ accessToken });
+    return res.json({ data: { access_token: accessToken } });
   } catch (error) {
     next(error);
   }

@@ -42,6 +42,12 @@ taskRouter.delete(
 );
 
 // TASK ASSIGNE CRUD
+taskRouter.get(
+  '/tasks/:taskId/assignee',
+  validate(taskIdParams),
+  isOwnerOrAssignee,
+  taskController.handleGetTasksAssignee
+);
 taskRouter.post(
   '/tasks/:taskId/assignee',
   validate(addTaskAssigneeSchema),

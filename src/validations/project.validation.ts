@@ -2,7 +2,7 @@ import Joi from 'joi';
 
 export const projectIdParams = {
   params: Joi.object().keys({
-    projectId: Joi.string().uuid().required()
+    projectId: Joi.string().required()
   })
 };
 
@@ -32,7 +32,7 @@ export interface GetProjectMembersDTO {
   limit?: number;
 }
 export const getProjectMembersSchema = {
-  body: Joi.object<GetProjectMembersDTO>().keys({
+  query: Joi.object<GetProjectMembersDTO>().keys({
     page: Joi.number().min(1),
     limit: Joi.number().min(1)
   }),
@@ -54,7 +54,7 @@ export interface RemoveProjectMemberDTO {
 }
 export const removeProjectMemberSchema = {
   body: Joi.object<RemoveProjectMemberDTO>().keys({
-    userId: Joi.string().email().required()
+    userId: Joi.string().required()
   }),
   ...projectIdParams
 };

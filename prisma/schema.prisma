@@ -143,6 +143,7 @@ model NotificationUser {
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId         String       @map("user_id")
   seen           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
 
   @@unique([notificationId, userId])
   @@index([notificationId, userId, seen])

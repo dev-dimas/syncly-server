@@ -3,6 +3,10 @@
   "compilerOptions": {
     "types": ["jest", "node"],
     "baseUrl": ".",
+    "sourceRoot": "./src",
+    "paths": {
+      "src/*": ["src/*"]
+    },
     "esModuleInterop": true,
     "module": "commonjs"
   },

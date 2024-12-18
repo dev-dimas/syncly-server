@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import type { NextFunction, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import prismaClient from 'src/config/prisma';
-import type { ValidatedRequest } from 'src/types/types';
+import type { TypedRequest, ValidatedRequest } from 'src/types/types';
 import { HttpException } from 'src/utils/http-exception.util';
 import { sendSSEMessage } from 'src/utils/sse-notification.util';
 import type {
@@ -12,6 +12,88 @@ import type {
   RemoveProjectMemberDTO,
   UpdateProjectDTO
 } from 'src/validations/project.validation';
+
+/**
+ * Handle get all project
+ */
+export const handleGetAllProject = async (
+  req: TypedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.payload?.userId;
+
+    if (!userId) throw new HttpException(StatusCodes.UNAUTHORIZED);
+
+    const allProjects = await prismaClient.project.findMany({
+      where: {
+        OR: [
+          {
+            isTeamProject: true,
+            members: { some: { userId } }
+          },
+          { isTeamProject: false, ownerId: userId }
+        ]
+      },
+      select: {
+        id: true,
+        name: true,
+        isTeamProject: true,
+        members: {
+          where: { userId },
+          select: { userId: true }
+        },
+        ownerId: true
+      }
+    });
+
+    const favoriteProjectIdsSet = new Set(
+      await prismaClient.favoriteProject
+        .findMany({
+          where: { userId },
+          select: { projectId: true }
+        })
+        .then((results) => results.map((res) => res.projectId))
+    );
+
+    const archiveProjectIdsSet = new Set(
+      await prismaClient.archiveProject
+        .findMany({
+          where: { userId },
+          select: { projectId: true }
+        })
+        .then((results) => results.map((res) => res.projectId))
+    );
+
+    const teamProjects: Array<Record<string, string | boolean>> = [];
+    const personalProjects: Array<Record<string, string | boolean>> = [];
+
+    allProjects.forEach((project) => {
+      const projectData = {
+        id: project.id,
+        name: project.name,
+        is_favorite: favoriteProjectIdsSet.has(project.id),
+        is_archived: archiveProjectIdsSet.has(project.id)
+      };
+
+      if (project.isTeamProject) {
+        teamProjects.push(projectData);
+      } else {
+        personalProjects.push(projectData);
+      }
+    });
+
+    return res.status(200).json({
+      data: {
+        team_projects: teamProjects,
+        personal_projects: personalProjects
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 /**
  * Handle create new project
@@ -87,6 +169,8 @@ export const handleGetProjectDetail = async (
         name: true,
         image: true,
         ownerId: true,
+        isTeamProject: true,
+        createdAt: true,
         members: {
           skip: 0,
           take: 4,
@@ -132,7 +216,12 @@ export const handleGetProjectDetail = async (
 
     if (!project) throw new HttpException(StatusCodes.NOT_FOUND);
 
-    return res.status(200).json({ data: { project, total_members: members } });
+    return res.status(200).json({
+      data: {
+        project: { ...project, isProjectOwner: !!isProjectOwner },
+        total_members: members
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -255,6 +344,10 @@ export const handleDeleteProject = async (
 
     if (!quitProject) throw new HttpException(StatusCodes.NOT_FOUND);
 
+    await prismaClient.taskAssignee.deleteMany({
+      where: { projectId, userId }
+    });
+
     const user = await prismaClient.user.findFirst({
       where: {
         id: userId
@@ -282,13 +375,13 @@ export const handleDeleteProject = async (
  * Handle get project member
  */
 export const handleGetMembers = async (
-  req: ValidatedRequest<GetProjectMembersDTO>,
+  req: ValidatedRequest<void, GetProjectMembersDTO>,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const page = req.body.page ?? 1;
-    const limit = req.body.limit ?? 10;
+    const page = Number(req.query.page) ?? 1;
+    const limit = Number(req.query.limit) ?? 10;
     const { projectId } = req.params;
 
     if (!projectId) throw new HttpException(StatusCodes.UNAUTHORIZED);
@@ -302,6 +395,8 @@ export const handleGetMembers = async (
       select: {
         user: {
           select: {
+            id: true,
+            email: true,
             name: true,
             avatar: true
           }
@@ -313,9 +408,13 @@ export const handleGetMembers = async (
       where: { projectId }
     });
 
-    return res
-      .status(200)
-      .json({ data: { members, total_members: totalMembers } });
+    return res.status(200).json({
+      data: {
+        members,
+        total_members: totalMembers,
+        total_pages: Math.ceil(totalMembers / limit)
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -413,7 +512,11 @@ export const handleRemoveMember = async (
 
     if (!deletedMember) throw new HttpException(StatusCodes.NOT_FOUND);
 
-    await sendSSEMessage([deletedMember.id], {
+    await prismaClient.taskAssignee.deleteMany({
+      where: { projectId, userId }
+    });
+
+    await sendSSEMessage([userId], {
       type: 'KICKED_FROM_PROJECT',
       projectName: deletedMember.project.name
     });

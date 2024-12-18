@@ -18,7 +18,10 @@ const isOwnerOrAssignee = async (
     select: { id: true }
   });
 
-  if (isTaskAssignee) next();
+  if (isTaskAssignee) {
+    next();
+    return;
+  }
 
   const isProjectOwner = await prismaClient.task.findFirst({
     where: { id: taskId, project: { ownerId: userId } },
