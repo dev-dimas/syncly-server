@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import validate from '../middleware/validate';
 import {
+  changePasswordSchema,
   forgotPasswordSchema,
   resetPasswordSchema
 } from '../validations/password.validation';
@@ -17,6 +18,11 @@ passwordRouter.post(
   '/reset-password/:token',
   validate(resetPasswordSchema),
   passwordController.handleResetPassword
+);
+passwordRouter.post(
+  '/change-password',
+  validate(changePasswordSchema),
+  passwordController.handleChangePassword
 );
 
 export default passwordRouter;
