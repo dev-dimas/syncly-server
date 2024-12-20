@@ -154,6 +154,8 @@ export const sendSSEMessage = async (
   clientIds: string[],
   params: NotificationParams
 ) => {
+  if (clientIds.length === 0) return;
+
   const message = await createNotificationMessage(clientIds, params);
 
   const clients = sseClients.filter((client) => clientIds.includes(client.id));

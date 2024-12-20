@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-confusing-void-expression */
 import { type Response } from 'express';
 import prismaClient from 'src/config/prisma';
 import { sendSSEMessage, sseClients } from 'src/utils/sse-notification.util';
@@ -24,6 +25,14 @@ describe('SSE Notification Utility', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('should do not create any notification if no clientIds passed', async () => {
+    const result = await sendSSEMessage([], {
+      type: 'ADDED_TO_PROJECT',
+      projectName: 'Test Project'
+    });
+    expect(result).toBeUndefined();
   });
 
   it('should create and send ADDED_TO_PROJECT notification', async () => {
