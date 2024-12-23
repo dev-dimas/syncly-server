@@ -39,5 +39,5 @@ Run tests: `npm coverage`
 **_Test Coverage_**
 
 <p align="center">
-<img src="https://github.com/dev-dimas/syncly-master/blob/master/assets/test-coverage.png?raw=true" style="padding-bottom: 15px" />
+<img src="https://github.com/dev-dimas/syncly-server/blob/master/assets/test-coverage.png?raw=true" style="padding-bottom: 15px" />
 </p>
