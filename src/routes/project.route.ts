@@ -15,29 +15,31 @@ import isProjectOwner from 'src/middleware/is-project-owner';
 
 const projectRouter = Router();
 
-projectRouter.use(isAuth);
-
 // CRUD PROJECT
-projectRouter.get('/projects', projectController.handleGetAllProject);
+projectRouter.get('/projects', isAuth, projectController.handleGetAllProject);
 projectRouter.post(
   '/projects',
+  isAuth,
   validate(createProjectSchema),
   projectController.handleCreateProject
 );
 projectRouter.get(
   '/projects/:projectId',
+  isAuth,
   validate(projectIdParams),
   isProjectMember,
   projectController.handleGetProjectDetail
 );
 projectRouter.put(
   '/projects/:projectId',
+  isAuth,
   validate(updateProjectSchema),
   isProjectOwner,
   projectController.handleUpdateProjectName
 );
 projectRouter.delete(
   '/projects/:projectId',
+  isAuth,
   validate(projectIdParams),
   isProjectMember,
   projectController.handleDeleteProject
@@ -46,18 +48,21 @@ projectRouter.delete(
 // CRUD PROJECT MEMBERS
 projectRouter.get(
   '/projects/:projectId/members',
+  isAuth,
   validate(getProjectMembersSchema),
   isProjectMember,
   projectController.handleGetMembers
 );
 projectRouter.post(
   '/projects/:projectId/members',
+  isAuth,
   validate(addProjectMemberSchema),
   isProjectOwner,
   projectController.handleAddMember
 );
 projectRouter.delete(
   '/projects/:projectId/members',
+  isAuth,
   validate(removeProjectMemberSchema),
   isProjectOwner,
   projectController.handleRemoveMember
@@ -66,12 +71,14 @@ projectRouter.delete(
 // FAVORITE AND ARCHIVE PROJECT HANDLERS
 projectRouter.post(
   '/projects/:projectId/favorite',
+  isAuth,
   validate(projectIdParams),
   isProjectMember,
   projectController.handleToggleProjectToFavorite
 );
 projectRouter.post(
   '/projects/:projectId/archive',
+  isAuth,
   validate(projectIdParams),
   isProjectMember,
   projectController.handleToggleProjectToArchive

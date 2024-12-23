@@ -235,7 +235,7 @@ export const handleDeleteTask = async (
 
     await sendSSEMessage(
       deletedTask.assignedTo
-        .filter((user) => user.userId)
+        .filter((user) => user.userId !== userId)
         .map((user) => user.userId),
       {
         type: 'TASK_DELETED',
