@@ -4,10 +4,8 @@ import * as userController from '../controller/user.controller';
 
 const userRouter = Router();
 
-userRouter.use(isAuth);
+userRouter.get('/user', isAuth, userController.handleGetUser);
 
-userRouter.get('/user', userController.handleGetUser);
-
-userRouter.put('/user', userController.handleUpdateUser);
+userRouter.put('/user', isAuth, userController.handleUpdateUser);
 
 export default userRouter;

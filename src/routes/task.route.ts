@@ -14,28 +14,30 @@ import {
 
 const taskRouter = Router();
 
-taskRouter.use(isAuth);
-
 taskRouter.post(
   '/tasks',
+  isAuth,
   validate(createTaskSchema),
   isProjectMember,
   taskController.handleCreateTask
 );
 taskRouter.put(
   '/tasks/:taskId',
+  isAuth,
   validate(updateTaskSchema),
   isOwnerOrAssignee,
   taskController.handleUpdateTask
 );
 taskRouter.get(
   '/tasks/:taskId',
+  isAuth,
   validate(taskIdParams),
   isOwnerOrAssignee,
   taskController.handleGetTaskDetail
 );
 taskRouter.delete(
   '/tasks/:taskId',
+  isAuth,
   validate(taskIdParams),
   isOwnerOrAssignee,
   taskController.handleDeleteTask
@@ -44,18 +46,21 @@ taskRouter.delete(
 // TASK ASSIGNE CRUD
 taskRouter.get(
   '/tasks/:taskId/assignee',
+  isAuth,
   validate(taskIdParams),
   isOwnerOrAssignee,
   taskController.handleGetTasksAssignee
 );
 taskRouter.post(
   '/tasks/:taskId/assignee',
+  isAuth,
   validate(addTaskAssigneeSchema),
   isOwnerOrAssignee,
   taskController.handleAddTaskAssignee
 );
 taskRouter.delete(
   '/tasks/:taskId/assignee',
+  isAuth,
   validate(removeTaskAssigneeSchema),
   isOwnerOrAssignee,
   taskController.handleRemoveTaskAssignee
